@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Samity Accounts</title>
+<style>
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --surface2:#faf8f3; --text:#241f16; --muted:#766d5b;
+  --border:#e4ddcc; --gold:#a8791f; --gold-bg:#fbf0d9; --green:#1f7a4d; --green-bg:#e4f5ea;
+  --red:#b3321f; --red-bg:#fbe9e4; --chip:#efe8d6;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151310; --surface:#1f1c16; --surface2:#262219; --text:#f1ece0; --muted:#a69b84;
+    --border:#39331f; --gold:#d6a94b; --gold-bg:#2e2410; --green:#4bc98a; --green-bg:#122a1e;
+    --red:#e8806a; --red-bg:#2c1712; --chip:#2e2a1c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151310; --surface:#1f1c16; --surface2:#262219; --text:#f1ece0; --muted:#a69b84;
+  --border:#39331f; --gold:#d6a94b; --gold-bg:#2e2410; --green:#4bc98a; --green-bg:#122a1e;
+  --red:#e8806a; --red-bg:#2c1712; --chip:#2e2a1c; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface);}
+header{position:sticky;top:0;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);
+  border-bottom:1px solid var(--border);padding:14px 16px 10px}
+header h1{margin:0 0 2px;font-size:19px}
+.badge{display:inline-block;font-size:12px;padding:3px 9px;border-radius:99px;margin-top:4px}
+.badge.owner{background:var(--green-bg);color:var(--green)}
+.badge.view{background:var(--chip);color:var(--muted)}
+nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 0;background:var(--surface);
+  border-bottom:1px solid var(--border)}
+nav button{flex:none;border:none;background:var(--chip);color:var(--text);padding:8px 14px;
+  border-radius:10px 10px 0 0;font-size:14px;font-weight:500}
+nav button.active{background:var(--gold);color:#fff}
+main{padding:14px 16px 32px;max-width:720px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:13px}
+input,select{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--border);
+  border-radius:9px;background:var(--surface2);color:var(--text);min-width:0}
+button.btn{font-family:inherit;font-size:14px;padding:9px 14px;border-radius:9px;border:none;
+  background:var(--gold);color:#fff;font-weight:600}
+button.btn.danger{background:var(--red)}
+button.btn.ghost{background:var(--chip);color:var(--text);font-weight:500}
+.list-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;
+  border-bottom:1px solid var(--border);gap:8px}
+.list-item:last-child{border-bottom:none}
+.stat{display:flex;justify-content:space-between;padding:7px 0;font-size:14px}
+.stat b{font-variant-numeric:tabular-nums}
+.pos{color:var(--green)}.neg{color:var(--red)}
+h3{margin:0 0 10px;font-size:15px}
+.empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
+.monthnav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.monthnav button.nav{background:var(--chip);border:none;border-radius:9px;padding:8px 12px;font-size:16px;font-weight:700;color:var(--text)}
+.monthnav select{flex:1;text-align:center;font-weight:600}
+.paybtn{border:1px solid var(--border);background:var(--surface2);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.paybtn.paid{background:var(--green-bg);color:var(--green);border-color:var(--green)}
+.imggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:8px}
+.imggrid figure{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface2)}
+.imggrid img{width:100%;height:100px;object-fit:cover;display:block}
+.imggrid figcaption{font-size:11px;padding:5px 6px;color:var(--muted)}
+.imggrid .del{display:block;width:100%;border:none;background:var(--red-bg);color:var(--red);font-size:11px;padding:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🪙 Samity Accounts</h1>
+  <span id="roleBadge" class="badge view">Loading...</span>
+</header>
+<nav id="tabs"></nav>
+<main id="main"><div class="empty">Loading...</div></main>
+<script>
+const TABS=[["members","Members"],["monthly","Monthly Dues"],["lump","Lump Sum"],["gold","Gold"],["docs","Documents"],["summary","Summary"]];
+let tab="monthly";
+let state={members:[],payments:[],lumpsum:[],gold:[],docs:[],settings:{monthlyAmount:200,goldPrice:0}};
+let db=null,user=null,assets=null,isOwner=false;
+const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function months(n){let out=[],y=2026,m=10;for(let i=0;i<n;i++){out.push(`${y}-${String(m).padStart(2,'0')}`);m++;if(m>12){m=1;y++;}}return out;}
+const MONTHS=months(24);
+let curMonthIdx=0;
+function mLabel(ym){const [y,m]=ym.split('-');return MN[+m-1]+' '+y;}
+function fmt(n){return (Math.round((n||0)*100)/100).toLocaleString('en-IN');}
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function init(){
+  user = await claude.use("user");
+  db = await claude.use("db");
+  assets = await claude.use("assets");
+  isOwner = !!(user && (await user.canEdit()));
+  document.getElementById('roleBadge').textContent = isOwner? '✏️ Edit mode (you are admin)':'👁️ View only';
+  document.getElementById('roleBadge').className = 'badge '+(isOwner?'owner':'view');
+  renderTabs();
+  if(!db){ document.getElementById('main').innerHTML='<div class="empty">Could not load data. Please open this link on claude.ai.</div>'; return; }
+  sub('members'); sub('payments'); sub('lumpsum'); sub('gold'); sub('docs');
+  db.collection('settings').doc('config').onSnapshot(s=>{
+    if(s.exists) state.settings=Object.assign(state.settings,s.data());
+    render();
+  });
+}
+function sub(name){
+  db.collection(name).onSnapshot(q=>{
+    state[name]=q.docs.map(d=>Object.assign({id:d.id},d.data()));
+    render();
+  }, e=>console.error(name,e));
+}
+function renderTabs(){
+  const nav=document.getElementById('tabs');
+  nav.innerHTML='';
+  TABS.forEach(([k,label])=>{
+    const b=document.createElement('button');
+    b.textContent=label; b.className=(k===tab?'active':'');
+    b.onclick=()=>{tab=k; renderTabs(); render();};
+    nav.appendChild(b);
+  });
+}
+function render(){
+  const m=document.getElementById('main');
+  if(tab==='members') m.innerHTML=viewMembers();
+  else if(tab==='monthly') m.innerHTML=viewMonthly();
+  else if(tab==='lump') m.innerHTML=viewLump();
+  else if(tab==='gold') m.innerHTML=viewGold();
+  else if(tab==='docs') m.innerHTML=viewDocs();
+  else m.innerHTML=viewSummary();
+  wire();
+}
+function memberName(id){const x=state.members.find(x=>x.id===id); return x?x.name:'Unknown';}
+
+function viewMembers(){
+  let rows = state.members.length? state.members.map(mb=>`
+    <div class="list-item"><span>${esc(mb.name)}</span>
+    ${isOwner?`<button class="btn danger" data-del-member="${mb.id}" style="padding:5px 10px;font-size:12px">Remove</button>`:''}
+    </div>`).join('') : '<div class="empty">No members yet</div>';
+  return `<div class="card"><h3>Members (${state.members.length})</h3>${rows}
+    ${isOwner?`<div class="row" style="margin-top:12px">
+      <input id="newMember" placeholder="Member name" style="flex:1">
+      <button class="btn" id="addMember">Add</button></div>`:''}
+    </div>
+    <div class="card"><h3>Settings</h3>
+    <div class="row"><label class="muted">Monthly due (Tk):</label>
+    <input id="monthlyAmt" type="number" value="${state.settings.monthlyAmount}" style="width:100px" ${isOwner?'':'disabled'}>
+    ${isOwner?'<button class="btn ghost" id="saveAmt">Save</button>':''}</div>
+    <p class="muted">If you raise the monthly amount after a year, update it here — future months will use the new amount.</p></div>`;
+}
+
+function viewMonthly(){
+  if(!state.members.length) return '<div class="card empty">Add members first in the Members tab</div>';
+  const ym=MONTHS[curMonthIdx];
+  const amt=state.settings.monthlyAmount;
+  const opts=MONTHS.map((m,i)=>`<option value="${i}" ${i===curMonthIdx?'selected':''}>${mLabel(m)}</option>`).join('');
+  let paidCount=0;
+  let rows=state.members.map(mb=>{
+    const p=state.payments.find(x=>x.memberId===mb.id && x.month===ym);
+    if(p) paidCount++;
+    return `<div class="list-item"><span>${esc(mb.name)}</span>
+      <button class="paybtn ${p?'paid':''}" ${isOwner?`data-toggle-pay="${mb.id}|${ym}"`:'disabled'}>
+      ${p? '✓ Paid ৳'+fmt(p.amount) : 'Unpaid'}</button></div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="monthnav">
+      <button class="nav" id="prevMonth" ${curMonthIdx===0?'disabled':''}>◀</button>
+      <select id="monthSel">${opts}</select>
+      <button class="nav" id="nextMonth" ${curMonthIdx===MONTHS.length-1?'disabled':''}>▶</button>
+    </div>
+    <h3>${mLabel(ym)} — due ৳${fmt(amt)} · ${paidCount}/${state.members.length} paid</h3>
+    <p class="muted">${isOwner?'Tap a member to toggle paid / unpaid for this month.':'View only — you cannot edit this.'}</p>
+    ${rows}
+    </div>`;
+}
+
+function viewLump(){
+  const opts=state.members.map(mb=>`<option value="${mb.id}">${esc(mb.name)}</option>`).join('');
+  const rows=state.lumpsum.length? [...state.lumpsum].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(l=>`
+    <div class="list-item"><span>${esc(memberName(l.memberId))} — ৳${fmt(l.amount)}<br><span class="muted">${esc(l.date||'')} ${esc(l.note||'')}</span></span>
+    ${isOwner?`<button class="btn danger" data-del-lump="${l.id}" style="padding:5px 10px;font-size:12px">Remove</button>`:''}</div>`).join('')
+    : '<div class="empty">No lump-sum deposits yet</div>';
+  return `<div class="card"><h3>Lump-sum deposits (every 6 months)</h3>${rows}
+    ${isOwner?`<div class="row" style="margin-top:12px;gap:6px">
+      <select id="lumpMember">${opts}</select>
+      <input id="lumpAmt" type="number" placeholder="Amount" style="width:90px">
+      <input id="lumpDate" type="date" style="width:140px">
+      <input id="lumpNote" placeholder="Note (optional)" style="flex:1;min-width:100px">
+      <button class="btn" id="addLump">Add</button></div>`:''}
+    </div>`;
+}
+
+function viewGold(){
+  const rows=state.gold.length? [...state.gold].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(g=>{
+    const curVal = state.settings.goldPrice ? g.grams*state.settings.goldPrice : null;
+    const pl = curVal!==null ? curVal-g.cost : null;
+    return `<div class="list-item"><span>${esc(g.date||'')} — ${fmt(g.grams)} g<br>
+      <span class="muted">cost ৳${fmt(g.cost)}${curVal!==null?` · value now ৳${fmt(curVal)} · <b class="${pl>=0?'pos':'neg'}">${pl>=0?'profit':'loss'} ৳${fmt(Math.abs(pl))}</b>`:''}${g.note?' · '+esc(g.note):''}</span></span>
+      ${isOwner?`<button class="btn danger" data-del-gold="${g.id}" style="padding:5px 10px;font-size:12px">Remove</button>`:''}</div>`;
+  }).join('') : '<div class="empty">No gold purchases yet</div>';
+  return `<div class="card"><h3>Gold purchases</h3>${rows}
+    ${isOwner?`<div class="row" style="margin-top:12px;gap:6px">
+      <input id="goldDate" type="date" style="width:140px">
+      <input id="goldGrams" type="number" step="0.001" placeholder="Grams" style="width:90px">
+      <input id="goldCost" type="number" placeholder="Total cost ৳" style="width:110px">
+      <input id="goldNote" placeholder="Note" style="flex:1;min-width:90px">
+      <button class="btn" id="addGold">Add</button></div>`:''}
+    </div>
+    <div class="card"><h3>Current market rate</h3>
+    <div class="row"><label class="muted">Per gram ৳</label>
+    <input id="goldPrice" type="number" value="${state.settings.goldPrice||''}" style="width:110px" ${isOwner?'':'disabled'}>
+    ${isOwner?'<button class="btn ghost" id="saveGoldPrice">Save</button>':''}</div>
+    <p class="muted">Enter today's market rate to auto-calculate profit/loss.</p></div>`;
+}
+
+function viewDocs(){
+  const items=[...state.docs].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const grid=items.length? `<div class="imggrid">${items.map(d=>`
+    <figure><img src="${esc(d.url)}" alt="${esc(d.caption||'')}">
+    <figcaption>${esc(d.caption||'')}${d.date?' · '+esc(d.date):''}</figcaption>
+    ${isOwner?`<button class="del" data-del-doc="${d.id}">Remove</button>`:''}
+    </figure>`).join('')}</div>` : '<div class="empty">No files or proof images yet</div>';
+  return `<div class="card"><h3>Files & Proof (images, receipts)</h3>${grid}
+    ${isOwner?`<div class="row" style="margin-top:12px;gap:6px">
+      <input id="docFile" type="file" accept="image/*">
+      <input id="docCaption" placeholder="Caption (e.g. Oct gold receipt)" style="flex:1;min-width:120px">
+      <button class="btn" id="addDoc">Upload</button></div>
+      <p class="muted" id="docStatus"></p>`:'<p class="muted">Only the admin can upload. Everyone can view.</p>'}
+    </div>`;
+}
+
+function viewSummary(){
+  const totalMonthly = state.payments.reduce((s,p)=>s+(p.amount||state.settings.monthlyAmount),0);
+  const totalLump = state.lumpsum.reduce((s,l)=>s+(+l.amount||0),0);
+  const totalCollected = totalMonthly+totalLump;
+  const totalGoldCost = state.gold.reduce((s,g)=>s+(+g.cost||0),0);
+  const totalGrams = state.gold.reduce((s,g)=>s+(+g.grams||0),0);
+  const cashInHand = totalCollected-totalGoldCost;
+  const curVal = state.settings.goldPrice? totalGrams*state.settings.goldPrice : null;
+  const pl = curVal!==null? curVal-totalGoldCost : null;
+  return `<div class="card"><h3>Summary</h3>
+    <div class="stat"><span>Total members</span><b>${state.members.length}</b></div>
+    <div class="stat"><span>Total monthly dues collected</span><b>৳${fmt(totalMonthly)}</b></div>
+    <div class="stat"><span>Total lump-sum collected</span><b>৳${fmt(totalLump)}</b></div>
+    <div class="stat"><span><b>Total collected</b></span><b>৳${fmt(totalCollected)}</b></div>
+    </div>
+    <div class="card"><h3>Gold</h3>
+    <div class="stat"><span>Total bought</span><b>${fmt(totalGrams)} g</b></div>
+    <div class="stat"><span>Total spent on gold</span><b>৳${fmt(totalGoldCost)}</b></div>
+    <div class="stat"><span>Current market value</span><b>${curVal!==null?'৳'+fmt(curVal):'rate not set'}</b></div>
+    <div class="stat"><span><b>Profit/Loss</b></span><b class="${pl>=0?'pos':'neg'}">${pl!==null?((pl>=0?'Profit ৳':'Loss ৳')+fmt(Math.abs(pl))):'—'}</b></div>
+    </div>
+    <div class="card"><h3>Cash in hand (estimate)</h3>
+    <div class="stat"><span>Collected − spent on gold</span><b>৳${fmt(cashInHand)}</b></div>
+    <p class="muted">Estimate only — any other expenses (e.g. meeting costs) are not included.</p></div>`;
+}
+
+function wire(){
+  const el=id=>document.getElementById(id);
+  if(el('addMember')) el('addMember').onclick=async()=>{
+    const v=el('newMember').value.trim(); if(!v)return;
+    await db.collection('members').add({name:v,joined:new Date().toISOString().slice(0,10)});
+    el('newMember').value='';
+  };
+  document.querySelectorAll('[data-del-member]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Remove this member?')) await db.collection('members').doc(b.dataset.delMember).delete();
+  });
+  if(el('saveAmt')) el('saveAmt').onclick=async()=>{
+    await db.collection('settings').doc('config').set(Object.assign({},state.settings,{monthlyAmount:+el('monthlyAmt').value||0}));
+  };
+  if(el('monthSel')) el('monthSel').onchange=()=>{curMonthIdx=+el('monthSel').value;render();};
+  if(el('prevMonth')) el('prevMonth').onclick=()=>{if(curMonthIdx>0){curMonthIdx--;render();}};
+  if(el('nextMonth')) el('nextMonth').onclick=()=>{if(curMonthIdx<MONTHS.length-1){curMonthIdx++;render();}};
+  document.querySelectorAll('[data-toggle-pay]').forEach(c=>c.onclick=async()=>{
+    const [mid,ym]=c.dataset.togglePay.split('|');
+    const id=mid+'_'+ym;
+    const existing=state.payments.find(x=>x.memberId===mid&&x.month===ym);
+    if(existing) await db.collection('payments').doc(id).delete();
+    else await db.collection('payments').doc(id).set({memberId:mid,month:ym,amount:state.settings.monthlyAmount,type:'monthly'});
+  });
+  if(el('addLump')) el('addLump').onclick=async()=>{
+    const memberId=el('lumpMember').value, amount=+el('lumpAmt').value, date=el('lumpDate').value, note=el('lumpNote').value;
+    if(!memberId||!amount)return alert('Please pick a member and amount');
+    await db.collection('lumpsum').add({memberId,amount,date,note});
+    el('lumpAmt').value='';el('lumpNote').value='';
+  };
+  document.querySelectorAll('[data-del-lump]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Remove?')) await db.collection('lumpsum').doc(b.dataset.delLump).delete();
+  });
+  if(el('addGold')) el('addGold').onclick=async()=>{
+    const grams=+el('goldGrams').value, cost=+el('goldCost').value, date=el('goldDate').value, note=el('goldNote').value;
+    if(!grams||!cost)return alert('Please enter grams and cost');
+    await db.collection('gold').add({grams,cost,date,note});
+    el('goldGrams').value='';el('goldCost').value='';el('goldNote').value='';
+  };
+  document.querySelectorAll('[data-del-gold]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Remove?')) await db.collection('gold').doc(b.dataset.delGold).delete();
+  });
+  if(el('saveGoldPrice')) el('saveGoldPrice').onclick=async()=>{
+    await db.collection('settings').doc('config').set(Object.assign({},state.settings,{goldPrice:+el('goldPrice').value||0}));
+  };
+  if(el('addDoc')) el('addDoc').onclick=async()=>{
+    const f=el('docFile').files[0]; if(!f)return alert('Choose an image first');
+    if(!assets) return alert('Upload is not available here');
+    el('docStatus').textContent='Uploading...';
+    try{
+      const up=await assets.upload(f);
+      await db.collection('docs').add({assetId:up.id,url:up.url,caption:el('docCaption').value,date:new Date().toISOString().slice(0,10)});
+      el('docCaption').value=''; el('docFile').value=''; el('docStatus').textContent='';
+    }catch(e){ el('docStatus').textContent='Upload failed.'; }
+  };
+  document.querySelectorAll('[data-del-doc]').forEach(b=>b.onclick=async()=>{
+    if(confirm('Remove this file?')) await db.collection('docs').doc(b.dataset.delDoc).delete();
+  });
+}
+init();
+</script>
+</body>
+</html>
